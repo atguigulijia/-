@@ -1,7 +1,9 @@
 package com.itheima.reggie;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,7 +12,8 @@ import java.util.Random;
 
 @SpringBootTest
 class ReggieTakeOutApplicationTests {
-
+    @Autowired
+    private RedisTemplate redisTemplate;
     @Test
     void contextLoads() {
         System.out.println("hello");
@@ -54,5 +57,9 @@ class ReggieTakeOutApplicationTests {
 
         List<Character> arrayList = Arrays.asList(characters);
         System.out.println(arrayList);
+    }
+
+    @Test
+    public void test4(){
     }
 }

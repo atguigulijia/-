@@ -13,10 +13,12 @@ import com.itheima.reggie.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +37,9 @@ public class DishController {
 
     @Autowired
     private DishFlavorService dishFlavorService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 分页查询所有菜品信息
@@ -144,8 +149,19 @@ public class DishController {
      */
     @GetMapping("/list")
     public R<List<DishDto>> list(Dish dish){
-        //首先查询根据categoryId和status条件 查询出所有dish信息
+        List<DishDto> dishDtoList = null;
         Long categoryId = dish.getCategoryId();
+        //按照菜品进行分类缓存
+        //设计key=  "dish"+"_"+categoryId+"_"+status
+        String key = "dish_"+categoryId+"_"+dish.getStatus();
+        dishDtoList = (List<DishDto>) redisTemplate.opsForValue().get(key);
+        //如果存在该菜品的缓存，则直接返回缓存数据
+        if (dishDtoList!=null){
+            return R.success(dishDtoList);
+        }
+        //不存在缓存数据，则进行菜品查询
+
+        //首先查询根据categoryId和status条件 查询出所有dish信息
         LambdaQueryWrapper<Dish> dishLambdaQueryWrapper = new LambdaQueryWrapper<>();
         dishLambdaQueryWrapper.eq(Dish::getCategoryId,categoryId);
         dishLambdaQueryWrapper.eq(Dish::getStatus,1);
@@ -154,7 +170,7 @@ public class DishController {
         List<Dish> dishList = dishService.list(dishLambdaQueryWrapper);
 
         //处理dishList，填充每个dishDto对象的flavor信息,categoryName信息
-        List<DishDto> dishDtoList = dishList.stream().map(item ->{
+        dishDtoList = dishList.stream().map(item ->{
             //拷贝dish对象的属性给dishDto对象
             DishDto dishDto = new DishDto();
             BeanUtils.copyProperties(item,dishDto);
@@ -173,7 +189,8 @@ public class DishController {
             dishDto.setFlavors(dishFlavors);
             return dishDto;
             }).collect(Collectors.toList());
-
+        //完成首次菜品查询，将数据缓存起来24小时
+        redisTemplate.opsForValue().set(key,dishDtoList,24, TimeUnit.DAYS);
         return R.success(dishDtoList);
     }
 
