@@ -13,10 +13,16 @@ import com.itheima.reggie.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +48,8 @@ public class DishController {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private RedisCacheManager redisCacheManager;
     /**
      * 分页查询所有菜品信息
      * @param page
@@ -134,6 +142,9 @@ public class DishController {
             return dish;
         }).collect(Collectors.toList());
         dishService.updateBatchById(dishs);
+        //清除所有缓存数据
+        Set keys = redisTemplate.keys("dish_*");
+        redisTemplate.delete(keys);
         return R.success("修改菜品状态成功");
     }
 
@@ -146,6 +157,9 @@ public class DishController {
     public R<String> delete(@RequestParam List<Long> ids){
         log.info("需要删除的菜品ids有"+ids);
         dishService.deleteDish(ids);
+        //清除所有缓存数据
+        Set keys = redisTemplate.keys("dish_*");
+        redisTemplate.delete(keys);
         return R.success("菜品删除成功");
     }
 
@@ -197,7 +211,7 @@ public class DishController {
             return dishDto;
             }).collect(Collectors.toList());
         //完成首次菜品查询，将数据缓存起来24小时
-        redisTemplate.opsForValue().set(key,dishDtoList,24, TimeUnit.DAYS);
+        redisTemplate.opsForValue().set(key,dishDtoList,24, TimeUnit.HOURS);
         return R.success(dishDtoList);
     }
 
