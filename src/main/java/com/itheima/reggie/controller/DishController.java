@@ -15,6 +15,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.cache.RedisCacheManager;
@@ -101,6 +102,7 @@ public class DishController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value = "dishCache",allEntries = true)
     public R<String> save(@RequestBody DishDto dishDto) {
         log.info("添加菜品信息："+dishDto.toString());
         dishService.saveWithFlavor(dishDto);
@@ -116,6 +118,7 @@ public class DishController {
      * @return
      */
     @PutMapping
+    @CacheEvict(value = "dishCache",allEntries = true)
     public R<String> update(@RequestBody DishDto dishDto){
         log.info(dishDto.toString());
         dishService.updateWithFlavor(dishDto);
@@ -132,6 +135,7 @@ public class DishController {
      * @return
      */
     @PostMapping("/status/{state}")
+    @CacheEvict(value = "dishCache",allEntries = true)
     public R<String> status(@PathVariable Integer state,@RequestParam List<Long> ids){
         log.info("需要修改到的状态为"+state+"，ids为"+ids);
         Integer status = state;
@@ -154,6 +158,7 @@ public class DishController {
      * @return
      */
     @DeleteMapping
+    @CacheEvict(value = "dishCache",allEntries = true)
     public R<String> delete(@RequestParam List<Long> ids){
         log.info("需要删除的菜品ids有"+ids);
         dishService.deleteDish(ids);
@@ -163,11 +168,11 @@ public class DishController {
         return R.success("菜品删除成功");
     }
 
-    /***
+   /* *//***
      * 根据categoryId或者dishName获取对应的菜品集合(包括该菜品对应的口味信息)
      * @param dish
      * @return
-     */
+     *//*
     @GetMapping("/list")
     public R<List<DishDto>> list(Dish dish){
         List<DishDto> dishDtoList = null;
@@ -212,6 +217,45 @@ public class DishController {
             }).collect(Collectors.toList());
         //完成首次菜品查询，将数据缓存起来24小时
         redisTemplate.opsForValue().set(key,dishDtoList,24, TimeUnit.HOURS);
+        return R.success(dishDtoList);
+    }*/
+
+    /***
+     * 根据categoryId或者dishName获取对应的菜品集合(包括该菜品对应的口味信息)
+     * @param dish
+     * @return
+     */
+    @GetMapping("/list")
+    @Cacheable(value = "dishCache",key = "#dish.categoryId")
+    public R<List<DishDto>> list(Dish dish){
+        //首先查询根据categoryId和status条件 查询出所有dish信息
+        LambdaQueryWrapper<Dish> dishLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        dishLambdaQueryWrapper.eq(Dish::getCategoryId,dish.getCategoryId());
+        dishLambdaQueryWrapper.eq(Dish::getStatus,1);
+        //添加排序顺序
+        dishLambdaQueryWrapper.orderByDesc(Dish::getUpdateTime); //查询最早的更新时间的dish
+        List<Dish> dishList = dishService.list(dishLambdaQueryWrapper);
+
+        //处理dishList，填充每个dishDto对象的flavor信息,categoryName信息
+        List<DishDto> dishDtoList = dishList.stream().map(item ->{
+            //拷贝dish对象的属性给dishDto对象
+            DishDto dishDto = new DishDto();
+            BeanUtils.copyProperties(item,dishDto);
+            //获取dish对象的categoryId
+            Category category = categoryService.getById(dish.getCategoryId());
+            if (category!=null){
+                //填充dishDto对象的categoryName属性
+                dishDto.setCategoryName(category.getName());
+            }
+            //获取dishId查询其对应的口信息
+            Long dishId = item.getId();
+            LambdaQueryWrapper<DishFlavor> dishFlavorLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            dishFlavorLambdaQueryWrapper.eq(DishFlavor::getDishId,dishId);
+            List<DishFlavor> dishFlavors = dishFlavorService.list(dishFlavorLambdaQueryWrapper);
+            //设置dishDto的flavor集合属性
+            dishDto.setFlavors(dishFlavors);
+            return dishDto;
+        }).collect(Collectors.toList());
         return R.success(dishDtoList);
     }
 

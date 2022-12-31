@@ -12,6 +12,9 @@ import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +35,9 @@ public class SetmealController {
     private SetmealService setmealService;
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private RedisCacheManager redisCacheManager;
 
     /**
      * 分页带条件查询套餐信息
@@ -75,6 +81,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value="setmealCache",allEntries = true)
     public R<String> save(@RequestBody SetmealDto setmealDto){
         log.info(setmealDto.toString());
         setmealService.saveWithDishs(setmealDto);
@@ -88,6 +95,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping("/status/{state}")
+    @CacheEvict(value="setmealCache",allEntries = true)
     public R<String> status(@PathVariable Integer state,@RequestParam List<Long> ids){
         log.info("需要修改到的状态为:"+state+"ids有"+ids);
         List<Setmeal> setmeals = ids.stream().map(item ->{
@@ -106,6 +114,7 @@ public class SetmealController {
      * @return
      */
     @DeleteMapping
+    @CacheEvict(value="setmealCache",allEntries = true)
     public R<String> delete(@RequestParam List<Long> ids){
         setmealService.deleteWithDishs(ids);
         return  R.success("删除套餐信息成功");
@@ -128,6 +137,7 @@ public class SetmealController {
      * @return
      */
     @PutMapping
+    @CacheEvict(value="setmealCache",allEntries = true)
     public R<String> update(@RequestBody SetmealDto setmealDto){
         setmealService.updateWithSetmealDish(setmealDto);
         return R.success("修改套餐信息成功");
@@ -139,6 +149,7 @@ public class SetmealController {
      * @return
      */
     @GetMapping("/list")
+    @Cacheable(value = "setmealCache",key = "#setmeal.categoryId" ,unless = "#result.data == null")
     public R<List<Setmeal>> list(Setmeal setmeal){
         //根据categoryId查询相关套餐
         Long categoryId = setmeal.getCategoryId();
@@ -146,6 +157,8 @@ public class SetmealController {
         setmealLambdaQueryWrapper.eq(Setmeal::getCategoryId,categoryId);
         setmealLambdaQueryWrapper.eq(Setmeal::getStatus,1);
         List<Setmeal> setmealList = setmealService.list(setmealLambdaQueryWrapper);
+        //未查到对应套餐信息则引用指向空
+//        if (setmealList.size() == 0) {setmealList = null;}
         return R.success(setmealList);
     }
 
