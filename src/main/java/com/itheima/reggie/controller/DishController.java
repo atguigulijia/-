@@ -106,9 +106,6 @@ public class DishController {
     public R<String> save(@RequestBody DishDto dishDto) {
         log.info("添加菜品信息："+dishDto.toString());
         dishService.saveWithFlavor(dishDto);
-        //清除所有缓存数据
-        Set keys = redisTemplate.keys("dish_*");
-        redisTemplate.delete(keys);
         return R.success("菜品添加成功");
     }
 
@@ -122,9 +119,6 @@ public class DishController {
     public R<String> update(@RequestBody DishDto dishDto){
         log.info(dishDto.toString());
         dishService.updateWithFlavor(dishDto);
-        //清除所有缓存数据
-        Set keys = redisTemplate.keys("dish_*");
-        redisTemplate.delete(keys);
         return R.success("更新成功");
     }
 
@@ -146,9 +140,6 @@ public class DishController {
             return dish;
         }).collect(Collectors.toList());
         dishService.updateBatchById(dishs);
-        //清除所有缓存数据
-        Set keys = redisTemplate.keys("dish_*");
-        redisTemplate.delete(keys);
         return R.success("修改菜品状态成功");
     }
 
@@ -162,9 +153,6 @@ public class DishController {
     public R<String> delete(@RequestParam List<Long> ids){
         log.info("需要删除的菜品ids有"+ids);
         dishService.deleteDish(ids);
-        //清除所有缓存数据
-        Set keys = redisTemplate.keys("dish_*");
-        redisTemplate.delete(keys);
         return R.success("菜品删除成功");
     }
 

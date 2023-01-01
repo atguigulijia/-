@@ -70,7 +70,7 @@ public class UserController {
     public R<String> sendMsg(@RequestBody User user, HttpSession session) {
         String phone = user.getPhone();
         if (!StringUtils.isEmpty(phone)){
-                String regVerifiCode = String.valueOf(EmailUtil.sendEmailRegCode(phone));
+                String regVerifiCode = String.valueOf(EmailUtil.sendLoginCodeByEmail(phone));
                 log.info("验证码为"+regVerifiCode);
 //                session.setAttribute("regVerifiCode",regVerifiCode);
 //                session.setMaxInactiveInterval(3 *60);
