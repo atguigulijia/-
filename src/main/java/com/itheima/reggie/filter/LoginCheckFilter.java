@@ -29,7 +29,7 @@ public class LoginCheckFilter implements Filter{
         //1、获取本次请求的URI
         String requestURI = request.getRequestURI();// /backend/index.html
 
-        log.info("拦截到请求：{}",requestURI);
+//        log.info("拦截到请求：{}",requestURI);
 
         //定义不需要处理的请求路径
         String[] urls = new String[]{
