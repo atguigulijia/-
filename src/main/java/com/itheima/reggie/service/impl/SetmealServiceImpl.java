@@ -45,6 +45,9 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
 
     @Override
     public void deleteWithDishs(List<Long> ids) {
+        if (ids.size() ==0 || ids == null){
+            throw new CustomException("套餐id不可为空");
+        }
         //首先判断这些套餐是不是有起售状态
         //select count(*) from setmeal where id in (1,2,3) and status = 1;
         LambdaQueryWrapper<Setmeal> setmealLambdaQueryWrapper = new LambdaQueryWrapper<>();
