@@ -58,4 +58,5 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
 reggie:
-  file-path: C:\reggie\image\
+#  file-path: C:\reggie\image\
+  file-path:/usr/local/src/reggie/image/
